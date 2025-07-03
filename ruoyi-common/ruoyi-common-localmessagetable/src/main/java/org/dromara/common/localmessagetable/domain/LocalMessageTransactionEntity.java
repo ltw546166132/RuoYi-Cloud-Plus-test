@@ -3,7 +3,6 @@ package org.dromara.common.localmessagetable.domain;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-
 import java.time.LocalDateTime;
 
 @Data
@@ -21,6 +20,8 @@ public class LocalMessageTransactionEntity {
     private String paramTypes;
 
     private String description;
+
+    private String status;
 
     private Integer retryTimes = 0;
 

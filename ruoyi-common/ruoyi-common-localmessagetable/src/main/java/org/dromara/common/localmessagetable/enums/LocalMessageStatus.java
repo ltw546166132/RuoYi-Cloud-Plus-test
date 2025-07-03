@@ -6,15 +6,15 @@ import lombok.Getter;
 public enum LocalMessageStatus {
     PENDING("pending", "待执行"),
     SUCCESS("success", "成功"),
-    FAIL("fail", "失败"),
+    FAILED("failed", "失败"),
     MAX_RETRY_EXCEEDED("max_retry_exceeded", "最大重试次数 exceeded");
 
-    LocalMessageStatus(String code, String message) {
+    LocalMessageStatus(String code, String desc) {
         this.code = code;
-        this.message = message;
+        this.desc = desc;
     }
-    private String code;
-    private String message;
+    private final String code;
+    private final String desc;
     public static LocalMessageStatus getEnumByCode(String code) {
         for (LocalMessageStatus value : LocalMessageStatus.values()) {
             if (value.code.equals(code)) {
