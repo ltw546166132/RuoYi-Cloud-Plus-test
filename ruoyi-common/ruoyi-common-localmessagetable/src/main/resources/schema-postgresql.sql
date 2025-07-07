@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS local_message_table (
                                      id int8 NOT NULL, -- 主键
+                                     tenant_id   varchar(20)  default '000000'::varchar,
                                      class_name varchar(256) NOT NULL, -- 类名
                                      method_name varchar(256) NOT NULL, -- 方法名
                                      method_params varchar(256) NULL, -- 方法参数

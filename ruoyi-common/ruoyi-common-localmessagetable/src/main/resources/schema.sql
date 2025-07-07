@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS `local_message_table` (
                                        `id` bigint NOT NULL COMMENT '主键',
+                                       `tenant_id` varchar(20)     default '000000'           comment '租户编号',
                                        `class_name` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '类名',
                                        `method_name` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '方法名',
                                        `method_params` varchar(256) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '方法参数',
