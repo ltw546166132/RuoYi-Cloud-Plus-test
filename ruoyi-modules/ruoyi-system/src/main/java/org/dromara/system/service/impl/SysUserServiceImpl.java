@@ -565,6 +565,7 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     @LocalMessageTransaction
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void testSendLocalMessage(Long userId, String message) {
         SseMessageUtils.sendMessage(userId, message);

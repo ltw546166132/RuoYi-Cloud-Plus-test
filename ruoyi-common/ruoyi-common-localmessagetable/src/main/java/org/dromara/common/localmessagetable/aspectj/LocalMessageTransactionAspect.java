@@ -23,10 +23,16 @@ public class LocalMessageTransactionAspect {
     private ILocalMessageTransactionService localMessageTransactionService;
 
     private final ObjectMapper objectMapper = JsonUtils.getObjectMapper();
+    private static final ThreadLocal<Boolean> EXECUTING_LOCAL_MESSAGE = new ThreadLocal<>();
+
 
     @Around("@annotation(localMessageTransaction)")
     public Object around(ProceedingJoinPoint joinPoint, LocalMessageTransaction localMessageTransaction) throws Throwable {
-
+// 检查是否正在执行本地消息事务中的方法，避免递归
+        if (Boolean.TRUE.equals(EXECUTING_LOCAL_MESSAGE.get())) {
+            // 正在执行本地消息事务，直接执行原方法
+            return joinPoint.proceed();
+        }
         // 检查是否在事务中
         if (!TransactionSynchronizationManager.isActualTransactionActive()) {
             // 不在事务中，直接执行原方法
@@ -37,6 +43,12 @@ public class LocalMessageTransactionAspect {
         Method method = getMethod(joinPoint);
         if (!method.getReturnType().equals(Void.TYPE)) {
             // 有返回值，直接执行原方法
+            return joinPoint.proceed();
+        }
+        // 检查是否在嵌套事务中（当前方法本身开启了新事务）
+        String currentTransactionName = TransactionSynchronizationManager.getCurrentTransactionName();
+        if (currentTransactionName != null && currentTransactionName.contains(method.getName())) {
+            // 当前方法本身开启了新事务，直接执行原方法
             return joinPoint.proceed();
         }
 
@@ -71,6 +83,17 @@ public class LocalMessageTransactionAspect {
 
         // 不执行原方法，直接返回
         return null;
+    }
+
+    /**
+     * 标记正在执行本地消息事务
+     */
+    public static void setExecutingLocalMessage(boolean executing) {
+        if (executing) {
+            EXECUTING_LOCAL_MESSAGE.set(true);
+        } else {
+            EXECUTING_LOCAL_MESSAGE.remove();
+        }
     }
 
     private Method getMethod(ProceedingJoinPoint joinPoint) throws NoSuchMethodException {

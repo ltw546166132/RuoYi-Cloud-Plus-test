@@ -8,6 +8,7 @@ import org.dromara.common.core.utils.ObjectUtils;
 import org.dromara.common.core.utils.SpringUtils;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.json.utils.JsonUtils;
+import org.dromara.common.localmessagetable.aspectj.LocalMessageTransactionAspect;
 import org.dromara.common.localmessagetable.domain.LocalMessageTransactionEntity;
 import org.dromara.common.localmessagetable.enums.LocalMessageStatus;
 import org.dromara.common.localmessagetable.mapper.LocalMessageTransactionEntityMapper;
@@ -153,7 +154,15 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
         Object[] params = deserializeParams(message.getMethodParams(), paramTypes);
         // 获取方法并执行
         Method method = targetClass.getMethod(message.getMethodName(), paramTypes);
-        method.invoke(targetBean, params);
+        // 设置标记，表示正在执行本地消息事务
+        try{
+            LocalMessageTransactionAspect.setExecutingLocalMessage(true);
+            method.invoke(targetBean, params);
+        }finally {
+            LocalMessageTransactionAspect.setExecutingLocalMessage(false);
+        }
+
+
     }
 
     /**
@@ -162,7 +171,7 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
     @Override
     public void processPendingMessages() {
         List<LocalMessageTransactionEntity> pendingMessages = baseMapper.selectList(Wrappers.<LocalMessageTransactionEntity>lambdaQuery().in(LocalMessageTransactionEntity::getStatus, LocalMessageStatus.PENDING.getCode(), LocalMessageStatus.FAILED.getCode()).orderByDesc(LocalMessageTransactionEntity::getCreatedTime).apply("retry_times < max_retry_times"));
-        log.info("发现待处理消息数量: {}", pendingMessages.size());
+        log.info("发现待处理本地事务消息数量: {}", pendingMessages.size());
 
         for (LocalMessageTransactionEntity message : pendingMessages) {
             try {
