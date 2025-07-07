@@ -20,6 +20,7 @@ import org.dromara.common.localmessagetable.annotation.LocalMessageTransaction;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.satoken.utils.LoginHelper;
+import org.dromara.common.sse.dto.SseMessageDto;
 import org.dromara.common.sse.utils.SseMessageUtils;
 import org.dromara.system.domain.*;
 import org.dromara.system.domain.bo.SysUserBo;
@@ -559,16 +560,16 @@ public class SysUserServiceImpl implements ISysUserService {
 
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public Boolean testSendMessage(Long userId, String message) {
-        SpringUtils.getBean(SysUserServiceImpl.class).testSendLocalMessage(userId, message);
+    public Boolean testSendMessage(SseMessageDto dto) {
+        SpringUtils.getBean(SysUserServiceImpl.class).testSendLocalMessage(dto);
         return true;
     }
 
     @LocalMessageTransaction
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public void testSendLocalMessage(Long userId, String message) {
-        SseMessageUtils.sendMessage(userId, message);
+    public void testSendLocalMessage(SseMessageDto dto) {
+        SseMessageUtils.publishMessage(dto);
     }
 
     /**

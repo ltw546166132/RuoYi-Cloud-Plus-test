@@ -2,6 +2,7 @@ package org.dromara.system.service;
 
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
+import org.dromara.common.sse.dto.SseMessageDto;
 import org.dromara.system.domain.bo.SysUserBo;
 import org.dromara.system.domain.vo.SysUserExportVo;
 import org.dromara.system.domain.vo.SysUserVo;
@@ -218,7 +219,7 @@ public interface ISysUserService {
      */
     int deleteUserByIds(Long[] userIds);
 
-    void testSendLocalMessage(Long userId, String message);
+    void testSendLocalMessage(SseMessageDto dto);
 
     /**
      * 通过用户ID查询用户账户
@@ -276,5 +277,5 @@ public interface ISysUserService {
      */
     List<Long> selectUserIdsByRoleIds(List<Long> roleIds);
 
-    Boolean testSendMessage(Long userId, String message);
+    Boolean testSendMessage(SseMessageDto messageDto);
 }

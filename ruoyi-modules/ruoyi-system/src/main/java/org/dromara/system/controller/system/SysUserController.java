@@ -21,6 +21,7 @@ import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.satoken.utils.LoginHelper;
+import org.dromara.common.sse.dto.SseMessageDto;
 import org.dromara.common.sse.utils.SseMessageUtils;
 import org.dromara.common.tenant.helper.TenantHelper;
 import org.dromara.common.web.core.BaseController;
@@ -302,7 +303,10 @@ public class SysUserController extends BaseController {
 
     @GetMapping("testlocalmessage")
     public R<Void> testLocalMessage(Long userId, String message) {
-        Boolean result = userService.testSendMessage(userId,  message);
+        SseMessageDto sseMessageDto = new SseMessageDto();
+        sseMessageDto.setUserIds(List.of(userId));
+        sseMessageDto.setMessage(message);
+        Boolean result = userService.testSendMessage(sseMessageDto);
         return toAjax( result);
     }
 }
