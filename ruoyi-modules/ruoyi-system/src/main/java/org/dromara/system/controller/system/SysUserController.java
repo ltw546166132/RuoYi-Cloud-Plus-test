@@ -10,6 +10,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.core.constant.SystemConstants;
 import org.dromara.common.core.domain.R;
+import org.dromara.common.core.utils.MessageUtils;
 import org.dromara.common.core.utils.StreamUtils;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.encrypt.annotation.ApiEncrypt;
@@ -20,6 +21,7 @@ import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.satoken.utils.LoginHelper;
+import org.dromara.common.sse.utils.SseMessageUtils;
 import org.dromara.common.tenant.helper.TenantHelper;
 import org.dromara.common.web.core.BaseController;
 import org.dromara.system.api.model.LoginUser;
@@ -298,4 +300,9 @@ public class SysUserController extends BaseController {
         return R.ok(userService.selectUserListByDept(deptId));
     }
 
+    @GetMapping("testlocalmessage")
+    public R<Void> testLocalMessage(Long userId, String message) {
+        Boolean result = userService.testSendMessage(userId,  message);
+        return toAjax( result);
+    }
 }

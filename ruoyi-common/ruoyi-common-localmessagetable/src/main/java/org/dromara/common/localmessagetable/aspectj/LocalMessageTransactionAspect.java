@@ -10,13 +10,14 @@ import org.dromara.common.localmessagetable.annotation.LocalMessageTransaction;
 import org.dromara.common.localmessagetable.domain.LocalMessageTransactionEntity;
 import org.dromara.common.localmessagetable.enums.LocalMessageStatus;
 import org.dromara.common.localmessagetable.service.ILocalMessageTransactionService;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.lang.reflect.Method;
 
 @Aspect
-@Component
+@AutoConfiguration
 public class LocalMessageTransactionAspect {
     @Resource
     private ILocalMessageTransactionService localMessageTransactionService;

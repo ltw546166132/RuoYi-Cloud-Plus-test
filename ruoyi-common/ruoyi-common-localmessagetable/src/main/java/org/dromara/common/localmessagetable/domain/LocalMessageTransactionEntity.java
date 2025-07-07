@@ -34,4 +34,6 @@ public class LocalMessageTransactionEntity {
     private LocalDateTime updatedTime;
 
     private LocalDateTime executedTime;
+
+    private String tenantId;
 }

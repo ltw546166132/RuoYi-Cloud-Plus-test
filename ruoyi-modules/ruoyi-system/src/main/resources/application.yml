@@ -13,11 +13,6 @@ spring:
 
 --- # nacos 配置
 spring:
-  sql:
-    init:
-      mode: always
-      schema-location: classpath:schema.sql
-      continue-on-error: false
   cloud:
     nacos:
       # nacos 服务地址
@@ -37,3 +32,7 @@ spring:
       - optional:nacos:application-common.yml
       - optional:nacos:datasource.yml
       - optional:nacos:${spring.application.name}.yml
+# 默认/推荐使用sse推送
+sse:
+  enabled: true
+  path: /sse

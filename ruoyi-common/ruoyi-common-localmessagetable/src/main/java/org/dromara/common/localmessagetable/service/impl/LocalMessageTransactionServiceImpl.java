@@ -109,6 +109,30 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
             baseMapper.updateById(message);
         }
     }
+    /**
+     * 根据参数类型正确反序列化参数值
+     */
+    private Object[] deserializeParams(String methodParams, Class<?>[] paramTypes) throws Exception {
+        if (paramTypes.length == 0) {
+            return new Object[0];
+        }
+
+        // 先反序列化为JsonNode数组，保持原始JSON结构
+        com.fasterxml.jackson.databind.JsonNode[] jsonNodes = objectMapper.readValue(methodParams, com.fasterxml.jackson.databind.JsonNode[].class);
+
+        Object[] params = new Object[paramTypes.length];
+        for (int i = 0; i < paramTypes.length; i++) {
+            if (jsonNodes[i] == null || jsonNodes[i].isNull()) {
+                params[i] = null;
+            } else {
+                // 根据目标类型进行转换
+                params[i] = objectMapper.treeToValue(jsonNodes[i], paramTypes[i]);
+            }
+        }
+
+        return params;
+    }
+
 
     /**
      * 执行业务方法
@@ -126,8 +150,7 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
         }
 
         // 反序列化参数值
-        Object[] params = objectMapper.readValue(message.getMethodParams(), Object[].class);
-
+        Object[] params = deserializeParams(message.getMethodParams(), paramTypes);
         // 获取方法并执行
         Method method = targetClass.getMethod(message.getMethodName(), paramTypes);
         method.invoke(targetBean, params);
