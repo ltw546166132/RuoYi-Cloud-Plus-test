@@ -16,7 +16,6 @@ import org.dromara.common.core.constant.CacheNames;
 import org.dromara.common.core.constant.SystemConstants;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.*;
-import org.dromara.common.localmessagetable.annotation.LocalMessageTransaction;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.satoken.utils.LoginHelper;
@@ -571,20 +570,6 @@ public class SysUserServiceImpl implements ISysUserService {
         List<SysUserRole> userRoles = userRoleMapper.selectList(
             new LambdaQueryWrapper<SysUserRole>().in(SysUserRole::getRoleId, roleIds));
         return StreamUtils.toList(userRoles, SysUserRole::getUserId);
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    @Override
-    public Boolean testSendMessage(SseMessageDto dto) {
-        SpringUtils.getBean(SysUserServiceImpl.class).testSendLocalMessage(dto);
-        return true;
-    }
-
-    @LocalMessageTransaction
-    @Transactional(rollbackFor = Exception.class)
-    @Override
-    public void testSendLocalMessage(SseMessageDto dto) {
-        SseMessageUtils.publishMessage(dto);
     }
 
     /**

@@ -219,8 +219,6 @@ public interface ISysUserService {
      */
     int deleteUserByIds(Long[] userIds);
 
-    void testSendLocalMessage(SseMessageDto dto);
-
     /**
      * 通过用户ID查询用户账户
      *
@@ -276,6 +274,4 @@ public interface ISysUserService {
      * @return 用户ids
      */
     List<Long> selectUserIdsByRoleIds(List<Long> roleIds);
-
-    Boolean testSendMessage(SseMessageDto messageDto);
 }

@@ -300,13 +300,4 @@ public class SysUserController extends BaseController {
     public R<List<SysUserVo>> listByDept(@PathVariable @NotNull Long deptId) {
         return R.ok(userService.selectUserListByDept(deptId));
     }
-
-    @GetMapping("testlocalmessage")
-    public R<Void> testLocalMessage(Long userId, String message) {
-        SseMessageDto sseMessageDto = new SseMessageDto();
-        sseMessageDto.setUserIds(List.of(userId));
-        sseMessageDto.setMessage(message);
-        Boolean result = userService.testSendMessage(sseMessageDto);
-        return toAjax( result);
-    }
 }
