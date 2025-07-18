@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.ObjectUtils;
 import org.dromara.common.core.utils.SpringUtils;
 import org.dromara.common.core.utils.StringUtils;
@@ -14,6 +15,7 @@ import org.dromara.common.localmessagetable.enums.LocalMessageStatus;
 import org.dromara.common.localmessagetable.mapper.LocalMessageTransactionEntityMapper;
 import org.dromara.common.localmessagetable.service.ILocalMessageTransactionService;
 import org.dromara.common.redis.utils.RedisUtils;
+import org.dromara.common.tenant.helper.TenantHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -35,7 +37,6 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
     @Override
     public void saveMessage(LocalMessageTransactionEntity message) {
         message.setRetryTimes(0);
-        message.setCreatedTime(LocalDateTime.now());
         message.setStatus(LocalMessageStatus.PENDING.getCode());
         baseMapper.insert(message);
         log.info("保存本地消息事务: {}.{}", message.getClassName(), message.getMethodName());
@@ -86,7 +87,6 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
             // 更新状态为成功
             message.setStatus(LocalMessageStatus.SUCCESS.getCode());
             message.setExecutedTime(LocalDateTime.now());
-            message.setUpdatedTime(LocalDateTime.now());
             baseMapper.updateById(message);
 
             log.info("消息执行成功: {}.{}", message.getClassName(), message.getMethodName());
@@ -95,7 +95,6 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
             // 增加重试次数
             message.setRetryTimes(message.getRetryTimes() + 1);
             message.setErrorMessage(e.getMessage());
-            message.setUpdatedTime(LocalDateTime.now());
 
             if (message.getRetryTimes() >= message.getMaxRetryTimes()) {
                 message.setStatus(LocalMessageStatus.MAX_RETRY_EXCEEDED.getCode());
@@ -157,12 +156,20 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
         // 设置标记，表示正在执行本地消息事务
         try{
             LocalMessageTransactionAspect.setExecutingLocalMessage(true);
-            method.invoke(targetBean, params);
-        }finally {
+            if(StringUtils.isNotBlank(message.getTenantId())){
+                TenantHelper.dynamic(message.getTenantId(),() -> {
+                    try {
+                        return method.invoke(targetBean, params);
+                    } catch (Exception e) {
+                        throw new ServiceException(e.getMessage());
+                    }
+                });
+            }else{
+                method.invoke(targetBean, params);
+            }
+        } finally {
             LocalMessageTransactionAspect.setExecutingLocalMessage(false);
         }
-
-
     }
 
     /**
@@ -170,7 +177,7 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
      */
     @Override
     public void processPendingMessages() {
-        List<LocalMessageTransactionEntity> pendingMessages = baseMapper.selectList(Wrappers.<LocalMessageTransactionEntity>lambdaQuery().in(LocalMessageTransactionEntity::getStatus, LocalMessageStatus.PENDING.getCode(), LocalMessageStatus.FAILED.getCode()).orderByDesc(LocalMessageTransactionEntity::getCreatedTime).apply("retry_times < max_retry_times"));
+        List<LocalMessageTransactionEntity> pendingMessages = baseMapper.selectList(Wrappers.<LocalMessageTransactionEntity>lambdaQuery().in(LocalMessageTransactionEntity::getStatus, LocalMessageStatus.PENDING.getCode(), LocalMessageStatus.FAILED.getCode()).orderByDesc(LocalMessageTransactionEntity::getCreateTime).apply("retry_times < max_retry_times"));
         log.info("发现待处理本地事务消息数量: {}", pendingMessages.size());
 
         for (LocalMessageTransactionEntity message : pendingMessages) {
@@ -180,5 +187,13 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
                 log.error("定时任务执行消息失败: {}", message.getId(), e);
             }
         }
+    }
+
+    /**
+     * 定时任务：删除过期的消息 status等于success的数据只保留最近7天
+     */
+    @Override
+    public void deleteExpiredMessages(){
+        baseMapper.delete(Wrappers.<LocalMessageTransactionEntity>lambdaQuery().eq(LocalMessageTransactionEntity::getStatus, LocalMessageStatus.SUCCESS.getCode()).lt(LocalMessageTransactionEntity::getCreateTime, LocalDateTime.now().minusDays(7)));
     }
 }

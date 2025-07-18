@@ -2,3 +2,4 @@ org.dromara.common.localmessagetable.config.LocalMessageTableConfig
 org.dromara.common.localmessagetable.service.impl.LocalMessageTransactionServiceImpl
 org.dromara.common.localmessagetable.aspectj.LocalMessageTransactionAspect
 org.dromara.common.localmessagetable.scheduler.LocalMessageTransactionScheduler
+com.ryxx.common.localmessagetable.config.DatabaseInitConfig

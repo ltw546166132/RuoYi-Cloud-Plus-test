@@ -10,4 +10,6 @@ public interface ILocalMessageTransactionService {
     void executeMessageAsync(Long id);
 
     void processPendingMessages();
+
+    void deleteExpiredMessages();
 }

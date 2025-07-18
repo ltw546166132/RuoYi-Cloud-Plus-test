@@ -23,6 +23,5 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableAsync
 @EnableScheduling
 @EnableConfigurationProperties(TenantProperties.class)
-@PropertySource(value = "classpath:common-localmessagetable.yml", factory = YmlPropertySourceFactory.class)
 public class LocalMessageTableConfig {
 }
