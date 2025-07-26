@@ -17,4 +17,9 @@ public @interface LocalMessageTransaction {
      * 最大重试次数
      */
     int maxRetryTimes() default 3;
+
+    /**
+     * 是否异步执行
+     */
+    boolean async() default false;
 }

@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS local_message_table (
     update_by   int8,
     update_time timestamp,
     executed_time timestamp NULL,
+    user_id int8 NULL,
     CONSTRAINT local_message_table_pkey PRIMARY KEY (id)
     );
 COMMENT ON TABLE local_message_table IS '本地事务消息表';

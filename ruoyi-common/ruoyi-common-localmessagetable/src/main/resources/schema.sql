@@ -16,5 +16,6 @@ CREATE TABLE IF NOT EXISTS `local_message_table` (
     `update_by`         bigint(20)      default null               comment '更新者',
     `update_time`       datetime                                   comment '更新时间',
     `executed_time` datetime DEFAULT NULL,
+    `user_id` bigint DEFAULT NULL COMMENT '用户ID',
     PRIMARY KEY (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='本地事务消息表';

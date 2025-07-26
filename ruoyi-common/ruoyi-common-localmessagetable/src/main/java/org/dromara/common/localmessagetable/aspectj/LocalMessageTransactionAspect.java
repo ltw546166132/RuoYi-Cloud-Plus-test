@@ -76,8 +76,12 @@ public class LocalMessageTransactionAspect {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                // 事务提交成功后，异步执行消息
-                localMessageTransactionService.executeMessageAsync(localMessageTransactionEntity.getId());
+                if(localMessageTransaction.async()){
+                    // 事务提交成功后，异步执行消息
+                    localMessageTransactionService.executeMessageAsync(localMessageTransactionEntity.getId());
+                }else {
+                    localMessageTransactionService.executeMessageSync(localMessageTransactionEntity.getId());
+                }
             }
         });
 

@@ -46,11 +46,21 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
      * 异步执行消息
      */
     @Async
+    @Override
     public void executeMessageAsync(Long messageId) {
         try {
             executeMessage(messageId);
         } catch (Exception e) {
             log.error("异步执行消息失败: {}", messageId, e);
+        }
+    }
+
+    @Override
+    public void executeMessageSync(Long messageId) {
+        try {
+            executeMessage(messageId);
+        } catch (Exception e) {
+            log.error("同步执行消息失败: {}", messageId, e);
         }
     }
 
