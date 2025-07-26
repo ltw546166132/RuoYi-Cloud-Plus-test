@@ -5,11 +5,13 @@ import jakarta.annotation.Resource;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.dromara.common.core.utils.ObjectUtils;
 import org.dromara.common.json.utils.JsonUtils;
 import org.dromara.common.localmessagetable.annotation.LocalMessageTransaction;
 import org.dromara.common.localmessagetable.domain.LocalMessageTransactionEntity;
 import org.dromara.common.localmessagetable.enums.LocalMessageStatus;
 import org.dromara.common.localmessagetable.service.ILocalMessageTransactionService;
+import org.dromara.common.satoken.utils.LoginHelper;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -69,6 +71,9 @@ public class LocalMessageTransactionAspect {
         localMessageTransactionEntity.setParamTypes(paramTypes);
         localMessageTransactionEntity.setDescription(localMessageTransaction.description());
         localMessageTransactionEntity.setMaxRetryTimes(localMessageTransaction.maxRetryTimes());
+        if(ObjectUtils.isNotNull(LoginHelper.getUserId())){
+            localMessageTransactionEntity.setUserId(LoginHelper.getUserId());
+        }
         // 保存到数据库（在当前事务中）
         localMessageTransactionService.saveMessage(localMessageTransactionEntity);
 

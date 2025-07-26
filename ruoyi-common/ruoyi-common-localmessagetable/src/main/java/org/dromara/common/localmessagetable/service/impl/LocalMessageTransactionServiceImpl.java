@@ -5,9 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.core.exception.ServiceException;
-import org.dromara.common.core.utils.ObjectUtils;
-import org.dromara.common.core.utils.SpringUtils;
-import org.dromara.common.core.utils.StringUtils;
+import org.dromara.common.core.utils.*;
 import org.dromara.common.json.utils.JsonUtils;
 import org.dromara.common.localmessagetable.aspectj.LocalMessageTransactionAspect;
 import org.dromara.common.localmessagetable.domain.LocalMessageTransactionEntity;
@@ -16,18 +14,24 @@ import org.dromara.common.localmessagetable.mapper.LocalMessageTransactionEntity
 import org.dromara.common.localmessagetable.service.ILocalMessageTransactionService;
 import org.dromara.common.redis.utils.RedisUtils;
 import org.dromara.common.tenant.helper.TenantHelper;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.ServletRequestUtils;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 @Slf4j
 @Service
 public class LocalMessageTransactionServiceImpl implements ILocalMessageTransactionService {
+    @Resource
+    private ExecutorService scheduledExecutorService;
     @Resource
     private LocalMessageTransactionEntityMapper baseMapper;
 
@@ -45,11 +49,18 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
     /**
      * 异步执行消息
      */
-    @Async
     @Override
     public void executeMessageAsync(Long messageId) {
         try {
-            executeMessage(messageId);
+            RequestAttributes requestAttributes = ServletUtils.getRequestAttributes();
+            Threads.processInParallel(Arrays.asList(messageId), (x) -> {
+                try{
+                    RequestContextHolder.setRequestAttributes(requestAttributes);
+                    executeMessage(x);
+                }finally {
+                    RequestContextHolder.resetRequestAttributes();
+                }
+            }, scheduledExecutorService);
         } catch (Exception e) {
             log.error("异步执行消息失败: {}", messageId, e);
         }
@@ -93,7 +104,6 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
         try {
             // 执行业务方法
             executeBusinessMethod(message);
-
             // 更新状态为成功
             message.setStatus(LocalMessageStatus.SUCCESS.getCode());
             message.setExecutedTime(LocalDateTime.now());

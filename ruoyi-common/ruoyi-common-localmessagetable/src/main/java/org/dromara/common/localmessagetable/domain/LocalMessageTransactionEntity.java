@@ -31,4 +31,6 @@ public class LocalMessageTransactionEntity extends TenantEntity {
     private String errorMessage;
 
     private LocalDateTime executedTime;
+
+    private Long userId;
 }
