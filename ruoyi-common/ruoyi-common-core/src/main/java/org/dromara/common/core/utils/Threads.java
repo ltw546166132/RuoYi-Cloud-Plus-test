@@ -1,10 +1,14 @@
 package org.dromara.common.core.utils;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.ObjectUtil;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 /**
  * 线程相关工具类.
@@ -60,5 +64,39 @@ public class Threads {
         if (t != null) {
             log.error(t.getMessage(), t);
         }
+    }public static <T> void processInParallel(List<T> list, java.util.function.Consumer<T> task, Executor threadPoolTaskExecutor) {
+        if (CollUtil.isEmpty(list)) return;
+        if (ObjectUtil.isNull(task)) return;
+        List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
+        for (T item : list) {
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                task.accept(item);
+            }, threadPoolTaskExecutor);
+            completableFutures.add(future);
+        }
+        if(CollUtil.isNotEmpty(completableFutures)){
+            // 等待所有任务完成
+            CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[0])).join();
+        }
     }
+
+    public static <T, V> List<V> processInParallel(List<T> list, java.util.function.Function<T, V> task, Executor threadPoolTaskExecutor) {
+        if (CollUtil.isEmpty(list)) return null;
+        if (ObjectUtil.isNull(task)) return null;
+        List<CompletableFuture<V>> completableFutures = new ArrayList<>();
+        for (T item : list) {
+            CompletableFuture<V> future = CompletableFuture.supplyAsync(() -> {
+                V v = null;
+                v = task.apply(item);
+                return v;
+            }, threadPoolTaskExecutor);
+            completableFutures.add(future);
+        }
+        List<V> results = completableFutures.stream()
+            .map(CompletableFuture::join)
+            .collect(Collectors.toList());
+        return results;
+    }
+
+
 }
