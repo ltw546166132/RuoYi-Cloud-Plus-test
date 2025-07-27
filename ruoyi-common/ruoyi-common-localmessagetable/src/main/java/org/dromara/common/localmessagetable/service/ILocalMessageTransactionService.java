@@ -7,9 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 public interface ILocalMessageTransactionService {
     void saveMessage(LocalMessageTransactionEntity message);
 
-    void executeMessageAsync(Long id);
-
-    void executeMessageSync(Long id);
+    void executeMessageAsync(Long id, String tokenValue);
 
     void processPendingMessages();
 

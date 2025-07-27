@@ -1,5 +1,7 @@
 package org.dromara.common.localmessagetable.service.impl;
 
+import cn.dev33.satoken.context.mock.SaTokenContextMockUtil;
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
@@ -10,6 +12,7 @@ import org.dromara.common.json.utils.JsonUtils;
 import org.dromara.common.localmessagetable.aspectj.LocalMessageTransactionAspect;
 import org.dromara.common.localmessagetable.domain.LocalMessageTransactionEntity;
 import org.dromara.common.localmessagetable.enums.LocalMessageStatus;
+import org.dromara.common.localmessagetable.events.DeserializeEvent;
 import org.dromara.common.localmessagetable.mapper.LocalMessageTransactionEntityMapper;
 import org.dromara.common.localmessagetable.service.ILocalMessageTransactionService;
 import org.dromara.common.redis.utils.RedisUtils;
@@ -17,9 +20,7 @@ import org.dromara.common.tenant.helper.TenantHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.ServletRequestUtils;
-import org.springframework.web.context.request.RequestAttributes;
-import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.transaction.event.TransactionalEventListener;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -50,28 +51,20 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
      * 异步执行消息
      */
     @Override
-    public void executeMessageAsync(Long messageId) {
+    public void executeMessageAsync(Long messageId, String tokenValue) {
         try {
-            RequestAttributes requestAttributes = ServletUtils.getRequestAttributes();
             Threads.processInParallel(Arrays.asList(messageId), (x) -> {
-                try{
-                    RequestContextHolder.setRequestAttributes(requestAttributes);
+                if(StringUtils.isNotBlank(tokenValue)){
+                    SaTokenContextMockUtil.setMockContext(() -> {
+                        StpUtil.setTokenValue(tokenValue);
+                        executeMessage(x);
+                    });
+                }else{
                     executeMessage(x);
-                }finally {
-                    RequestContextHolder.resetRequestAttributes();
                 }
             }, scheduledExecutorService);
         } catch (Exception e) {
             log.error("异步执行消息失败: {}", messageId, e);
-        }
-    }
-
-    @Override
-    public void executeMessageSync(Long messageId) {
-        try {
-            executeMessage(messageId);
-        } catch (Exception e) {
-            log.error("同步执行消息失败: {}", messageId, e);
         }
     }
 
@@ -82,22 +75,22 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
     public void executeMessage(Long messageId) {
         boolean retryLock = RedisUtils.setObjectIfAbsent("local_message_transaction_lock:" + messageId, "", Duration.ofMillis(30000));
         if (!retryLock) {
-            log.warn("消息处理中，跳过: {}", messageId);
+            log.warn("本地事务消息处理中，跳过: {}", messageId);
             return;
         }
         LocalMessageTransactionEntity message = baseMapper.selectById(messageId);
         if (ObjectUtils.isNull(message)) {
-            log.warn("消息不存在: {}", messageId);
+            log.warn("本地事务消息不存在: {}", messageId);
             return;
         }
 
         if (StringUtils.equals(message.getStatus(), LocalMessageStatus.SUCCESS.getCode())) {
-            log.info("消息已执行成功，跳过: {}", messageId);
+            log.info("本地事务消息已执行成功，跳过: {}", messageId);
             return;
         }
 
         if (message.getRetryTimes() >= message.getMaxRetryTimes()) {
-            log.warn("消息超过最大重试次数，跳过: {}", messageId);
+            log.warn("本地事务消息超过最大重试次数，跳过: {}", messageId);
             return;
         }
 
@@ -109,7 +102,7 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
             message.setExecutedTime(LocalDateTime.now());
             baseMapper.updateById(message);
 
-            log.info("消息执行成功: {}.{}", message.getClassName(), message.getMethodName());
+            log.info("本地事务消息执行成功: {}.{}", message.getClassName(), message.getMethodName());
 
         } catch (Exception e) {
             // 增加重试次数
@@ -118,11 +111,11 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
 
             if (message.getRetryTimes() >= message.getMaxRetryTimes()) {
                 message.setStatus(LocalMessageStatus.MAX_RETRY_EXCEEDED.getCode());
-                log.error("消息执行失败，超过最大重试次数: {}.{}",
+                log.error("本地事务消息执行失败，超过最大重试次数: {}.{}",
                     message.getClassName(), message.getMethodName(), e);
             } else {
                 message.setStatus(LocalMessageStatus.FAILED.getCode());
-                log.warn("消息执行失败，重试次数: {}/{}, 错误: {}",
+                log.warn("本地事务消息执行失败，重试次数: {}/{}, 错误: {}",
                     message.getRetryTimes(), message.getMaxRetryTimes(), e.getMessage());
             }
 
@@ -175,7 +168,7 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
         Method method = targetClass.getMethod(message.getMethodName(), paramTypes);
         // 设置标记，表示正在执行本地消息事务
         try{
-            LocalMessageTransactionAspect.setExecutingLocalMessage(true);
+            LocalMessageTransactionAspect.markMethod(true, message.getClassName(), message.getMethodName());
             if(StringUtils.isNotBlank(message.getTenantId())){
                 TenantHelper.dynamic(message.getTenantId(),() -> {
                     try {
@@ -188,7 +181,7 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
                 method.invoke(targetBean, params);
             }
         } finally {
-            LocalMessageTransactionAspect.setExecutingLocalMessage(false);
+            LocalMessageTransactionAspect.markMethod(false, null, null);
         }
     }
 
@@ -215,5 +208,13 @@ public class LocalMessageTransactionServiceImpl implements ILocalMessageTransact
     @Override
     public void deleteExpiredMessages(){
         baseMapper.delete(Wrappers.<LocalMessageTransactionEntity>lambdaQuery().eq(LocalMessageTransactionEntity::getStatus, LocalMessageStatus.SUCCESS.getCode()).lt(LocalMessageTransactionEntity::getCreateTime, LocalDateTime.now().minusDays(7)));
+    }
+
+    @TransactionalEventListener(DeserializeEvent.class)
+    public void handleDeserializeEvent(DeserializeEvent event) {
+        Long messageId = event.getMessageId();
+        String tokenValue = event.getTokenValue();
+        // 事务提交成功后，异步执行消息
+        executeMessageAsync(messageId, tokenValue);
     }
 }
