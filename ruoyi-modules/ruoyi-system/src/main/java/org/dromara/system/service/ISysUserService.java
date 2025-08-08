@@ -1,11 +1,13 @@
 package org.dromara.system.service;
 
+import org.dromara.common.localmessagetable.annotation.LocalMessageTransaction;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.sse.dto.SseMessageDto;
 import org.dromara.system.domain.bo.SysUserBo;
 import org.dromara.system.domain.vo.SysUserExportVo;
 import org.dromara.system.domain.vo.SysUserVo;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -274,4 +276,20 @@ public interface ISysUserService {
      * @return 用户ids
      */
     List<Long> selectUserIdsByRoleIds(List<Long> roleIds);
+
+    void testlocalmessage(Long userId);
+
+    @Transactional(rollbackFor = Exception.class)
+    void testlocalmessageAsync(Long userId);
+
+    @LocalMessageTransaction
+    void testSaveMessage(Long userId);
+
+    @Transactional(rollbackFor = Exception.class)
+    @LocalMessageTransaction
+    void testSaveMessage2(Long userId);
+
+    @Transactional(rollbackFor = Exception.class)
+    @LocalMessageTransaction
+    void testSaveMessage3(Long userId);
 }

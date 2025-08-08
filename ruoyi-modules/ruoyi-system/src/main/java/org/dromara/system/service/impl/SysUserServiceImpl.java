@@ -1,5 +1,7 @@
 package org.dromara.system.service.impl;
 
+import cn.dev33.satoken.context.mock.SaTokenContextMockUtil;
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ArrayUtil;
@@ -10,17 +12,18 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.core.constant.CacheNames;
 import org.dromara.common.core.constant.SystemConstants;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.*;
+import org.dromara.common.localmessagetable.annotation.LocalMessageTransaction;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.satoken.utils.LoginHelper;
-import org.dromara.common.sse.dto.SseMessageDto;
-import org.dromara.common.sse.utils.SseMessageUtils;
+import org.dromara.system.api.model.LoginUser;
 import org.dromara.system.domain.*;
 import org.dromara.system.domain.bo.SysUserBo;
 import org.dromara.system.domain.vo.SysPostVo;
@@ -33,10 +36,14 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 
 /**
  * 用户 业务层处理
@@ -638,4 +645,53 @@ public class SysUserServiceImpl implements ISysUserService {
         return ObjectUtils.notNullGetter(sysUser, SysUser::getEmail);
     }
 
+    @Resource
+    private ExecutorService scheduledExecutorService;
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public void testlocalmessage(Long userId) {
+        Long userId1 = LoginHelper.getUserId();
+        LoginUser loginUser = LoginHelper.getLoginUser();
+        System.out.println(System.currentTimeMillis()+"-->"+userId1+"测试");
+        String tokenValue = StpUtil.getTokenValue();
+        Threads.processInParallel(List.of(userId), i -> {
+            SaTokenContextMockUtil.setMockContext(() -> {
+                StpUtil.setTokenValue(tokenValue);
+                SpringUtils.getAopProxy( this).testlocalmessageAsync(userId);
+            });
+        }, scheduledExecutorService);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public void testlocalmessageAsync(Long userId) {
+        Long userId1 = LoginHelper.getUserId();
+        LoginUser loginUser = LoginHelper.getLoginUser();
+        System.out.println(System.currentTimeMillis()+"-->"+userId1+"测试");
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @LocalMessageTransaction
+    @Override
+    public void testSaveMessage(Long userId){
+        System.out.println(System.currentTimeMillis()+"-->"+userId+"测试");
+        SpringUtils.getAopProxy(this).testSaveMessage2(userId);
+        SpringUtils.getAopProxy(this).testSaveMessage3(userId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @LocalMessageTransaction
+    @Override
+    public void testSaveMessage2(Long userId){
+        System.out.println(System.currentTimeMillis()+"-->"+userId+"测试2");
+//        SpringUtils.getAopProxy(this).testSaveMessage3(userId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @LocalMessageTransaction
+    @Override
+    public void testSaveMessage3(Long userId){
+        System.out.println(System.currentTimeMillis()+"-->"+userId+"测试3");
+    }
 }

@@ -1,6 +1,7 @@
 package org.dromara.system.controller.system;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.crypto.digest.BCrypt;
 import cn.hutool.core.lang.tree.Tree;
 import cn.hutool.core.util.ArrayUtil;
@@ -10,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.core.constant.SystemConstants;
 import org.dromara.common.core.domain.R;
+import org.dromara.common.core.enums.UserType;
 import org.dromara.common.core.utils.MessageUtils;
 import org.dromara.common.core.utils.StreamUtils;
 import org.dromara.common.core.utils.StringUtils;
@@ -299,5 +301,12 @@ public class SysUserController extends BaseController {
     @GetMapping("/list/dept/{deptId}")
     public R<List<SysUserVo>> listByDept(@PathVariable @NotNull Long deptId) {
         return R.ok(userService.selectUserListByDept(deptId));
+    }
+
+    @GetMapping("/testlocalmessage")
+    public R<Void> testlocalmessage() {
+        Long userId = LoginHelper.getUserId();
+        userService.testSaveMessage(userId);
+        return R.ok();
     }
 }
