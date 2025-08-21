@@ -48,12 +48,12 @@ rules:
 - !SHARDING
  tables: # 数据分片规则配置
    t_order: # 订单逻辑表名称
-     actualDataNodes: ds_0.t_order_$->{2025}0$->{1..6}
+     actualDataNodes: ds_0.t_order_$->{2025}0$->{1..9}, ds_0.t_order_$->{2025}1$->{0..2}
      tableStrategy: # 分表策略
-       standard:
-         shardingColumn: year, month
-#         shardingAlgorithmName: t_order_inline
-         shardingAlgorithmName: order_groovy_algorithm
+       complex:
+         shardingColumns: year, month
+         shardingAlgorithmName: t_order_complex_inline
+
      keyGenerateStrategy:
        column: order_id
        keyGeneratorName: snowflake
@@ -76,25 +76,14 @@ rules:
 
  # 分片算法配置
  shardingAlgorithms:
-
-#   t_order_inline:  # 订单表分片算法名称
-#     type: INLINE
-#     props:
-#       algorithm-expression: t_order_${year}${String.format('%02d', month)}
-#       allow-range-query-with-inline-sharding: true
-
-   order_groovy_algorithm:
-     type: CLASS_BASED
+   t_order_complex_inline:
+     type: COMPLEX_INLINE
      props:
-       allow-range-query-with-inline-sharding: true
-       strategy: STANDARD
-       algorithmClassName: org.apache.shardingsphere.sharding.algorithm.sharding.inline.InlineShardingAlgorithm
-       algorithm-expression: |
-         order_$->{
-           def yearStr = year.toString()
-           def monthStr = month.toString().padLeft(2, '0')
-           return yearStr + monthStr
-         }
+       sharding-columns: year, month
+       algorithm-expression: t_order_$->{(year * 100 + month)}
+       allow-range-query-with-inline-sharding: false
+
+
 
 
  # 分布式序列算法配置
